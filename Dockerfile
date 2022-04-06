@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build-env
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /app
 
 COPY *.sln ./
@@ -10,9 +10,9 @@ COPY AwsS3/. ./AwsS3/
 WORKDIR /app/AwsS3
 RUN dotnet publish -c Release -o out
 
-FROM mcr.microsoft.com/dotnet/aspnet:5.0
+FROM mcr.microsoft.com/dotnet/aspnet:6.0
 WORKDIR /app
 
-COPY --from=build-env /app/AwsS3/out .
+COPY --from=build /app/AwsS3/out .
 
 ENTRYPOINT [ "dotnet", "AwsS3.dll" ]

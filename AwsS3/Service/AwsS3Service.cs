@@ -3,6 +3,7 @@ using Amazon.S3.Model;
 using Amazon.S3.Util;
 using AwsS3.Domain;
 using AwsS3.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
@@ -88,12 +89,12 @@ namespace AwsS3.Service
             try
             {
                 _logger.LogInformation("Iniciando upload para o bucket no S3 da Amazon...");
-                string originalFileName = WebUtility.HtmlEncode(Path.GetFileName(uploadRequest.LocalFilePath));
-                string fileExtension = Path.GetExtension(uploadRequest.LocalFilePath).ToLowerInvariant();
+                string originalFileName = uploadRequest.File.FileName;
+                string fileExtension = Path.GetExtension(originalFileName).ToLowerInvariant();
                 string bucketName = uploadRequest.BucketName;
                 string fileName = originalFileName;
 
-                if (!IsValidFile(uploadRequest.LocalFilePath))
+                if (!IsValidFile(uploadRequest.File))
                 {
                     _logger.LogInformation("Arquivo inválido");
                 }
@@ -107,17 +108,22 @@ namespace AwsS3.Service
 
                     fileName = uploadRequest.BucketPath + fileName;
 
-                    // Criar o objeto de imagem a ser carregado na memória
-                    PutObjectRequest putObjectRequest = new PutObjectRequest();
-                    putObjectRequest.FilePath = uploadRequest.LocalFilePath; // O caminho completo do arquivo local
-                    putObjectRequest.Key = fileName; // O nome de armazenamento do arquivo.
-                    putObjectRequest.BucketName = bucketName; // Especifica o bucket de destino para upload
-                    putObjectRequest.CannedACL = S3CannedACL.PublicRead; // Certifique-se de que o arquivo seja somente leitura para permitir que os usuários vejam suas fotos
-                    putObjectRequest.Metadata.Add("originalFileName", originalFileName); // Nome original do arquivo
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        uploadRequest.File.CopyTo(memoryStream);
 
-                    await _amazonS3.PutObjectAsync(putObjectRequest);
+                        // Criar o objeto de imagem a ser carregado na memória
+                        PutObjectRequest putObjectRequest = new PutObjectRequest();
+                        putObjectRequest.InputStream = memoryStream; // Arquivo
+                        putObjectRequest.Key = fileName; // O nome de armazenamento do arquivo.
+                        putObjectRequest.BucketName = bucketName; // Especifica o bucket de destino para upload
+                        putObjectRequest.CannedACL = S3CannedACL.PublicRead; // Certifique-se de que o arquivo seja somente leitura para permitir que os usuários vejam suas fotos
+                        putObjectRequest.Metadata.Add("originalFileName", originalFileName); // Nome original do arquivo
 
-                    _logger.LogInformation("Arquivo carregado para o bucket no S3 da Amazon com sucesso");
+                        await _amazonS3.PutObjectAsync(putObjectRequest);
+
+                        _logger.LogInformation("Arquivo carregado para o bucket no S3 da Amazon com sucesso");
+                    }
                 }
             }
             catch (NullReferenceException ex)
@@ -209,10 +215,8 @@ namespace AwsS3.Service
         }
 
         // Verifica se um arquivo enviado corresponde às restrições aceitas
-        private bool IsValidFile(string localFilePath)
+        private bool IsValidFile(IFormFile file)
         {
-            FileStream file = File.OpenRead(localFilePath);
-
             // Verifique o tamanho do arquivo
             if (file.Length < 0)
             {
@@ -221,7 +225,7 @@ namespace AwsS3.Service
 
             // Verifique a extensão do arquivo para evitar ameaças de segurança associadas a tipos de arquivo desconhecidos
             string[] permittedExtensions = new string[] { ".jpg", ".jpeg", ".png", ".pdf", ".rar", ".zip", ".xml", ".json" };
-            string ext = Path.GetExtension(localFilePath).ToLowerInvariant();
+            string ext = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (string.IsNullOrEmpty(ext) || !permittedExtensions.Contains<string>(ext))
             {
                 return false;

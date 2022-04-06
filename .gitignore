@@ -344,3 +344,6 @@ healthchecksdb
 
 # Chaves para proteção de dados geradas durante a execução da aplicação no Docker
 Temp-keys/*
+
+#Arquivo de configuração local
+.env.local

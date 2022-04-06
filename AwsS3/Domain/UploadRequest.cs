@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
 
 namespace AwsS3.Domain
 {
@@ -8,7 +9,7 @@ namespace AwsS3.Domain
         public string BucketName { get; set; }
 
         [Required]
-        public string LocalFilePath { get; set; }
+        public IFormFile File { get; set; }
 
         [Required]
         public string BucketPath { get; set; }

@@ -2,7 +2,7 @@ version: '3.9'
 services:
   s3_api:
     env_file:
-      - ./.env
+      - ./.env.local
     image: aws/s3-api:1.0
     restart: on-failure
     container_name: s3-api
@@ -21,6 +21,9 @@ services:
       - ASPNETCORE_URLS=https://+:443;http://+:80
       - Kestrel__Certificates__Default__Password=1234
       - Kestrel__Certificates__Default__Path=/app/certificate/certificate.pfx
-      - AWS_REGION=
-      - AWS_ACCESS_KEY_ID=
-      - AWS_SECRET_ACCESS_KEY=
+    networks:
+      - aws_s3_net
+
+networks:
+  aws_s3_net:
+    name: aws_s3_net
